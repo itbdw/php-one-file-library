@@ -55,7 +55,7 @@ class RssMaker
     public function setBasicInformation($config) {
         foreach ($config as $k=>$v) {
             $this->instance->startElement($k);
-                $this->instance->writeRaw($v);
+                $this->instance->writeCData($v);
             $this->instance->endElement();
         }
     }
@@ -67,7 +67,7 @@ class RssMaker
         $this->instance->startElement('item');
         foreach ($config as $k=>$v) {
             $this->instance->startElement($k);
-                $this->instance->writeRaw($v);
+                $this->instance->writeCData($v);
             $this->instance->endElement();
         }
         $this->instance->endElement();
