@@ -2,7 +2,7 @@
 /**
  *
  * RSS 输出工具
- * 
+ *
  * 需要安装 PHP XMLWriter 扩展
  *
  * @link https://github.com/itbdw/php-one-file-library
@@ -51,23 +51,33 @@ class RssMaker
 
     /**
      * @param $config
+     * @param array $use_cdata_keys
      */
-    public function setBasicInformation($config) {
+    public function setBasicInformation($config, $use_cdata_keys=[]) {
         foreach ($config as $k=>$v) {
             $this->instance->startElement($k);
-                $this->instance->writeCData($v);
+                if (in_array($k, $use_cdata_keys)) {
+                    $this->instance->writeCData($v);
+                } else {
+                    $this->instance->text($v);
+                }
             $this->instance->endElement();
         }
     }
 
     /**
      * @param $config
+     * @param array $use_cdata_keys
      */
-    public function addElement($config) {
+    public function addElement($config, $use_cdata_keys=[]) {
         $this->instance->startElement('item');
         foreach ($config as $k=>$v) {
             $this->instance->startElement($k);
+            if (in_array($k, $use_cdata_keys)) {
                 $this->instance->writeCData($v);
+            } else {
+                $this->instance->text($v);
+            }
             $this->instance->endElement();
         }
         $this->instance->endElement();
@@ -120,7 +130,10 @@ class RssMaker
             'pubDate'=>gmdate('D, d M Y H:i:s T'),
             'guid' => 'https://example.com/item/1',
             'comments' => 'https://example.com/item/1/comments',
-        ]);
+        ], [
+            'title', 'description', 'author'
+            ]
+        );
 
         $d = $rss->getDocument();
 DOC;
@@ -128,4 +141,3 @@ DOC;
     }
 
 }
-
