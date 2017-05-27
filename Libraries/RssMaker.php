@@ -35,7 +35,7 @@ class RssMaker
     /**
      * @return RssMaker
      */
-    public static function getNewInstance() {
+    public static function getInstance() {
         $obj = new self;
         $obj->instance = new \XMLWriter();
 
@@ -101,7 +101,7 @@ class RssMaker
      */
     public function showUsage() {
         $doc = <<<'DOC'
-        $rss = RssMaker::getNewInstance();
+        $rss = RssMaker::getInstance();
 
         $rss->setBasicInformation([
             'title'=>'hello world',
