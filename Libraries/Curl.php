@@ -11,6 +11,10 @@ class Curl
 {
     public static $ua = null;
 
+    public static $http_code = null;
+    public static $error_code = null;
+    public static $error_msg = null;
+
     /**
      * @param $url
      * @param $params
@@ -34,15 +38,7 @@ class Curl
 
         $output = curl_exec($ch);
 
-        if (curl_errno($ch)) {
-            self::error($url, curl_error($ch));
-        }
-
-        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-
-        if ($http_code != 200) {
-            self::error($url, 'http code is not 200', [$http_code, $output]);
-        }
+        self::logResponse($url, $ch, $output);
 
         curl_close($ch);
         return $output;
@@ -74,14 +70,7 @@ class Curl
 
         $output = curl_exec($ch);
 
-        if (curl_errno($ch)) {
-            self::error($url, curl_error($ch));
-        }
-
-        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        if ($http_code != 200) {
-            self::error($url, 'http code is not 200', [$http_code, $output]);
-        }
+        self::logResponse($url, $ch, $output);
 
         curl_close($ch);
         return $output;
@@ -137,14 +126,8 @@ class Curl
 
         $output = curl_exec($ch);
 
-        if (curl_errno($ch)) {
-            self::error($url, curl_error($ch));
-        }
+        self::logResponse($url, $ch, $output);
 
-        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        if ($http_code != 200) {
-            self::error($url, 'http code is not 200', [$http_code, $output]);
-        }
         curl_close($ch);
         return $output;
     }
@@ -252,4 +235,20 @@ class Curl
         }
         return self::$ua;
     }
+
+    protected static function logResponse($url, $ch, $output) {
+        self::$error_code = curl_errno($ch);
+        self::$error_msg = curl_error($ch);
+        self::$http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
+        if (self::$error_code) {
+            self::error($url, self::$error_msg);
+        }
+
+        //strpos 只对字符串有效
+        if (strpos((string)self::$http_code, '20') !== 0) {
+            self::error($url, 'http code is not 20x', [self::$http_code, $output]);
+        }
+    }
+
 }
