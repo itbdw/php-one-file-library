@@ -38,7 +38,7 @@ class Curl
 
         $output = curl_exec($ch);
 
-        self::logResponse($url, $ch, $output);
+        self::logResponse($url, $ch);
 
         curl_close($ch);
         return $output;
@@ -70,7 +70,7 @@ class Curl
 
         $output = curl_exec($ch);
 
-        self::logResponse($url, $ch, $output);
+        self::logResponse($url, $ch);
 
         curl_close($ch);
         return $output;
@@ -126,7 +126,7 @@ class Curl
 
         $output = curl_exec($ch);
 
-        self::logResponse($url, $ch, $output);
+        self::logResponse($url, $ch);
 
         curl_close($ch);
         return $output;
@@ -236,18 +236,18 @@ class Curl
         return self::$ua;
     }
 
-    protected static function logResponse($url, $ch, $output) {
+    protected static function logResponse($url, $ch) {
         self::$error_code = curl_errno($ch);
         self::$error_msg = curl_error($ch);
         self::$http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 
         if (self::$error_code) {
-            self::error($url, self::$error_msg);
+            self::error($url, self::$error_code . ' ' . self::$error_msg);
         }
 
         //strpos 只对字符串有效
         if (strpos((string)self::$http_code, '20') !== 0) {
-            self::error($url, 'http code is not 20x', [self::$http_code, $output]);
+            self::error($url, 'http code is not 20x, got ' . self::$http_code . ' instead');
         }
     }
 
