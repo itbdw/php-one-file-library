@@ -5,8 +5,13 @@
  * Date: 16/7/5
  * Time: 上午11:22
  */
+
 namespace App\Libraries;
 
+/**
+ * Class Curl
+ * @package App\Libraries
+ */
 class Curl
 {
     public static $ua = null;
@@ -17,24 +22,26 @@ class Curl
 
     /**
      * @param $url
-     * @param $params
+     * @param $curl_params
      * @return mixed
      */
-    public static function get($url, $params = [])
+    public static function get($url, $curl_params = [])
     {
         $ch = curl_init($url);
 
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+        $result_params = self::setDefaults();
 
-        curl_setopt($ch, CURLOPT_USERAGENT, self::uniqueRandomUA());
+        $result_params = [
 
-        curl_setopt($ch, CURLOPT_HEADER, false);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            ] + $result_params;
 
-        curl_setopt($ch, CURLOPT_ENCODING, 'gzip,deflate');
+        $proxy_params = self::getProxyParam($url);
+        if ($proxy_params) {
+            $result_params = $result_params + $proxy_params;
+        }
+        $result_params = $curl_params + $result_params;
 
-        curl_setopt_array($ch, $params);
+        curl_setopt_array($ch, $result_params);
 
         $output = curl_exec($ch);
 
@@ -42,31 +49,160 @@ class Curl
 
         curl_close($ch);
         return $output;
+    }
+
+    public static function setDefaults()
+    {
+        return [
+            CURLOPT_CONNECTTIMEOUT => 2,
+            CURLOPT_TIMEOUT => 20,
+            CURLOPT_USERAGENT => self::uniqueRandomUA(),
+            CURLOPT_HTTPHEADER => [
+                'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                'Accept-Encoding' => 'gzip, deflate, sdch',
+                'Accept-Language' => 'zh-CN,zh;q=0.8',
+                'Cache-Control' => 'no-cache',
+            ],
+            CURLOPT_HEADER => false,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_MAXREDIRS => 5,
+            CURLOPT_ENCODING => 'gzip,deflate',
+        ];
+
+    }
+
+    /**
+     * @return mixed|null
+     */
+    public static function uniqueRandomUA()
+    {
+        if (self::$ua === null) {
+            self::$ua = self::randomUA();
+        }
+        return self::$ua;
+    }
+
+    /**
+     * @return mixed
+     */
+    public static function randomUA()
+    {
+        $uas = [];
+        $rand_num = 10;
+        for ($i = 0; $i <= $rand_num; $i++) {
+
+            $version = mt_rand(58, 60);
+            $version .= '.' . mt_rand(0, 10);
+            $version .= '.' . mt_rand(10, 60);
+            $version .= '.' . mt_rand(10, 60);
+
+            $uas[] = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/' . $version . ' Safari/537.36';
+        }
+
+        return $uas[mt_rand(0, count($uas) - 1)];
+    }
+
+    /**
+     * @param $url
+     * @return array
+     */
+    public static function getProxyParam($url)
+    {
+        $param = [];
+        if (self::shouldUseProxy($url)) {
+            $param[CURLOPT_PROXY] = "socks5://127.0.0.1:1080";
+        }
+
+        return $param;
+    }
+
+    /**
+     * @param $url
+     * @return bool
+     */
+    public static function shouldUseProxy($url)
+    {
+
+        $flag = false;
+
+        if (strpos($url, 'steamstatic.com') !== false) {
+            $flag = true;
+        }
+
+        if (strpos($url, 'akamaihd.net') !== false) {
+            $flag = true;
+        }
+
+        if (strpos($url, 'steampowered.com') !== false) {
+            $flag = true;
+        }
+
+        if (strpos($url, 'steamcommunity.com') !== false) {
+            $flag = true;
+        }
+
+        if (strpos($url, 'google.com') !== false) {
+            $flag = true;
+        }
+
+        return $flag;
+    }
+
+    /**
+     * @param $url
+     * @param $ch
+     */
+    public static function logResponse($url, $ch)
+    {
+        self::$error_code = curl_errno($ch);
+        self::$error_msg = curl_error($ch);
+        self::$http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
+        if (self::$error_code) {
+            self::error($url, self::$error_code . ' ' . self::$error_msg);
+        }
+
+        //strpos 只对字符串有效
+        if (strpos((string)self::$http_code, '20') !== 0) {
+            self::error($url, 'http code is not 20x, got ' . self::$http_code . ' instead');
+        }
+    }
+
+    /**
+     * @param $url
+     * @param $em
+     * @param array $ext
+     */
+    public static function error($url, $em, $ext = array())
+    {
+        error_log("Curl Library Error Found! $em $url " . json_encode($ext));
     }
 
     /**
      * @param $url
      * @param $data
-     * @param $params
+     * @param $curl_params
      * @return mixed
      */
-    public static function post($url, $data, $params = [])
+    public static function post($url, $data, $curl_params = [])
     {
         $ch = curl_init($url);
 
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+        $result_params = self::setDefaults();
 
-        curl_setopt($ch, CURLOPT_USERAGENT, self::uniqueRandomUA());
+        $result_params = [
+                CURLOPT_POST => true,
+                CURLOPT_POSTFIELDS => $data
+            ] + $result_params;
 
-        curl_setopt($ch, CURLOPT_HEADER, false);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
+        $proxy_params = self::getProxyParam($url);
+        if ($proxy_params) {
+            $result_params = $result_params + $proxy_params;
+        }
+        $result_params = $curl_params + $result_params;
 
-        curl_setopt($ch, CURLOPT_ENCODING, 'gzip,deflate');
-
-        curl_setopt_array($ch, $params);
+        curl_setopt_array($ch, $result_params);
 
         $output = curl_exec($ch);
 
@@ -78,63 +214,23 @@ class Curl
 
     /**
      * @param $url
-     * @param $params
-     * @return mixed
-     *
-     * HTTP/1.1 200 OK
-     * Date: Tue, 05 Jul 2016 04:04:48 GMT
-     * Server: nginx
-     * Content-Type: image/gif
-     * Content-Length: 14437898
-     * Accept-Ranges: bytes
-     * Access-Control-Allow-Origin: *
-     * Access-Control-Expose-Headers: X-Log, X-Reqid
-     * Access-Control-Max-Age: 2592000
-     * Cache-Control: public, max-age=7200
-     * Content-Disposition: inline; filename="ff59817bf2a5bbb678d71a57486e90da.gif"
-     * Content-Transfer-Encoding: binary
-     * ETag: "loZkShTothYHyLM8VmVVy_Bxari5"
-     * Last-Modified: Mon, 04 Jul 2016 10:34:16 GMT
-     * X-Log: mc.g;IO:1
-     * X-Reqid: Z1EAALPQ5y5bEV4U
-     * X-Qiniu-Zone: 0
-     * X-Via: 1.1 chengwtong85:8105 (Cdn Cache Server V2.0), 1.1 lianwangtong61:4 (Cdn Cache Server V2.0)
-     * Connection: keep-alive
-     * {此处有一个 \r\n}
-     * {此处有一个 \r\n}
+     * @param array $curl_params
+     * @return array
      */
-    public static function getHeaders($url, $params = [])
+    public static function getHeadersBeautyLowerCase($url, $curl_params = [])
     {
-        $ch = curl_init($url);
+        $headers = Curl::getHeadersBeauty($url, $curl_params);
+        foreach ($headers as $k => $v) {
+            unset($headers[$k]);
+            $headers[strtolower($k)] = $v;
+        }
 
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 5);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 5);
-
-        curl_setopt($ch, CURLOPT_USERAGENT, self::uniqueRandomUA());
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Accept'=>'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-            'Accept-Encoding'=>'gzip, deflate, sdch',
-            'Accept-Language'=>'zh-CN,zh;q=0.8',
-            'Cache-Control'=>'no-cache',
-        ]);
-
-        curl_setopt($ch, CURLOPT_HEADER, true);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_NOBODY, true);
-        
-        curl_setopt_array($ch, $params);
-
-        $output = curl_exec($ch);
-
-        self::logResponse($url, $ch);
-
-        curl_close($ch);
-        return $output;
+        return $headers;
     }
 
     /**
      * @param $url
-     * @param array $params
+     * @param array $curl_params
      * @return array
      *
      * {
@@ -159,9 +255,9 @@ class Curl
      * Connection: "keep-alive"
      * }
      */
-    public static function getHeadersBeauty($url, $params = [])
+    public static function getHeadersBeauty($url, $curl_params = [])
     {
-        $return = Curl::getHeaders($url, $params);
+        $return = Curl::getHeaders($url, $curl_params);
         $return = explode("\r\n", $return);
 
         $scheme = array_shift($return);
@@ -183,72 +279,56 @@ class Curl
 
     /**
      * @param $url
-     * @param array $params
-     * @return array
+     * @param $curl_params
+     * @return mixed
+     *
+     * HTTP/1.1 200 OK
+     * Date: Tue, 05 Jul 2016 04:04:48 GMT
+     * Server: nginx
+     * Content-Type: image/gif
+     * Content-Length: 14437898
+     * Accept-Ranges: bytes
+     * Access-Control-Allow-Origin: *
+     * Access-Control-Expose-Headers: X-Log, X-Reqid
+     * Access-Control-Max-Age: 2592000
+     * Cache-Control: public, max-age=7200
+     * Content-Disposition: inline; filename="ff59817bf2a5bbb678d71a57486e90da.gif"
+     * Content-Transfer-Encoding: binary
+     * ETag: "loZkShTothYHyLM8VmVVy_Bxari5"
+     * Last-Modified: Mon, 04 Jul 2016 10:34:16 GMT
+     * X-Log: mc.g;IO:1
+     * X-Reqid: Z1EAALPQ5y5bEV4U
+     * X-Qiniu-Zone: 0
+     * X-Via: 1.1 chengwtong85:8105 (Cdn Cache Server V2.0), 1.1 lianwangtong61:4 (Cdn Cache Server V2.0)
+     * Connection: keep-alive
+     * {此处有一个 \r\n}
+     * {此处有一个 \r\n}
      */
-    public static function getHeadersBeautyLowerCase($url, $params=[]) {
-        $headers = Curl::getHeadersBeauty($url, $params);
-        foreach ($headers as $k=>$v) {
-            unset($headers[$k]);
-            $headers[strtolower($k)] = $v;
-        }
-
-        return $headers;
-    }
-
-    //todo 可以在此改为你自己系统里的日志处理方式，也可以自己再写一个 Class 继承，再改写方法
-    protected static function error($url, $em, $ext=array())
+    public static function getHeaders($url, $curl_params = [])
     {
-        error_log("Curl Library Error Found! $em " . json_encode($ext));
-    }
+        $ch = curl_init($url);
 
-    //todo 可以在此直接新增或删除 UA，也可以自己再写一个 Class 继承，并改写该方法
-    protected static function randomUA()
-    {
-        $uas = [
-           'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36',
-           'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2227.1 Safari/537.36',
-           'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2227.0 Safari/537.36',
-           'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2227.0 Safari/537.36',
-           'Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2226.0 Safari/537.36',
-           'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36',
-           'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36'
-        ];
+        $result_params = self::setDefaults();
 
-        $rand_num = 10;
-        for ($i=0; $i<= $rand_num; $i++) {
+        $result_params = [
+                CURLOPT_HEADER => true,
+                CURLOPT_NOBODY => true
+            ] + $result_params;
 
-            $version = mt_rand(10, 60);
-            $version .= '.'.mt_rand(0, 10);
-            $version .= '.'.mt_rand(10, 60);
-            $version .= '.'.mt_rand(10, 60);
-
-            $uas[] = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/'.$version.' Safari/537.36';
+        $proxy_params = self::getProxyParam($url);
+        if ($proxy_params) {
+            $result_params = $result_params + $proxy_params;
         }
+        $result_params = $curl_params + $result_params;
 
-        return $uas[mt_rand(0, count($uas) - 1)];
-    }
+        curl_setopt_array($ch, $result_params);
 
-    protected static function uniqueRandomUA() {
-        if (self::$ua === null) {
-            self::$ua = self::randomUA();
-        }
-        return self::$ua;
-    }
+        $output = curl_exec($ch);
 
-    protected static function logResponse($url, $ch) {
-        self::$error_code = curl_errno($ch);
-        self::$error_msg = curl_error($ch);
-        self::$http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        self::logResponse($url, $ch);
 
-        if (self::$error_code) {
-            self::error($url, self::$error_code . ' ' . self::$error_msg);
-        }
-
-        //strpos 只对字符串有效
-        if (strpos((string)self::$http_code, '20') !== 0) {
-            self::error($url, 'http code is not 20x, got ' . self::$http_code . ' instead');
-        }
+        curl_close($ch);
+        return $output;
     }
 
 }
