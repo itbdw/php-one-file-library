@@ -58,10 +58,9 @@ class Curl
             CURLOPT_TIMEOUT => 20,
             CURLOPT_USERAGENT => self::uniqueRandomUA(),
             CURLOPT_HTTPHEADER => [
-                'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                'Accept-Encoding' => 'gzip, deflate, sdch',
-                'Accept-Language' => 'zh-CN,zh;q=0.8',
-                'Cache-Control' => 'no-cache',
+                'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                'Accept-Language: zh-CN,zh;q=0.8',
+                'Cache-Control: no-cache',
             ],
             CURLOPT_HEADER => false,
             CURLOPT_RETURNTRANSFER => true,
