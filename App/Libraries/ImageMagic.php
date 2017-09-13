@@ -473,14 +473,25 @@ class ImageMagic
         }
     }
 
+
     /**
+     * 经过压缩，就会改变图片格式为 JPEG
+     * 调用方法后，需要使用 getExtension() 来获取文件后缀
+     *
      * @param float $q
      */
-    public function setCompressQuality($q=0.7) {
+    public function setJpegCompressQuality($q=0.7) {
+
+        if ($this->type == 'gif') {
+            return ;
+        }
+
         $a = $this->image->getImageCompressionQuality() * $q;
         if ($a == 0) {
             $a = $q*100;
         }
+
+        $this->type = 'jpg';
 
         $this->image->setImageFormat('JPEG');
         $this->image->setImageCompression(\Imagick::COMPRESSION_JPEG);
@@ -489,24 +500,18 @@ class ImageMagic
     }
 
     /**
-     * @param bool $header
+     * @return string
      */
-    public function output($header = true)
+    public function getBlob()
     {
-        if ($header) {
-            header('Content-type: ' . $this->type);
-        }
-        echo $this->image->getImagesBlob();
+        return $this->image->getImagesBlob();
     }
 
     /**
-     * @return string
+     * @return null
      */
-    public function getBlob($format=null)
-    {
-        if ($format && $format != $this->type) {
-            $this->image->setFormat($format);
-        }
-        return $this->image->getImagesBlob();
+    public function getExtension() {
+        return $this->type;
     }
+
 }
