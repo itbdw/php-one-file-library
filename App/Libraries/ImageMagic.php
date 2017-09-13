@@ -1,7 +1,6 @@
 <?php
 namespace App\Libraries;
 /**
- * 图片缩放
  *
  * itbdw
  * @since 2017-09-11
@@ -12,7 +11,7 @@ namespace App\Libraries;
  *
  * 图片处理服务类
  * 使用php扩展服务\Imagick实现
- * ImageMagick 官网地址 http:www.imagemagick.org/script/image.php
+ * ImageMagick 官网地址 http:www.imagemagick.org/script/index.php
  *
  * @author weiguang3
  * @since 20140403
@@ -473,30 +472,51 @@ class ImageMagic
         }
     }
 
-
     /**
-     * 经过压缩，就会改变图片格式为 JPEG
-     * 调用方法后，需要使用 getExtension() 来获取文件后缀
+     * gif 图片不压缩
+     * png 有透明则不压缩
+     *
+     * 否则转换为 jpg 并压缩
      *
      * @param float $q
      */
-    public function setJpegCompressQuality($q=0.7) {
+    public function setJpegCompressQualityAndMore($q) {
+
+        $this->image->stripImage();
 
         if ($this->type == 'gif') {
             return ;
         }
 
-        $a = $this->image->getImageCompressionQuality() * $q;
-        if ($a == 0) {
-            $a = $q*100;
+        if ($this->type == 'png') {
+            $flag = $this->image->getImageAlphaChannel();
+
+            if (!in_array($flag, [
+                \Imagick::ALPHACHANNEL_UNDEFINED,
+                \Imagick::ALPHACHANNEL_DEACTIVATE
+            ])) {
+                $this->image->setInterlaceScheme(\Imagick::INTERLACE_PLANE);
+                return ;
+            }
         }
 
-        $this->type = 'jpg';
+        $a = $this->image->getImageCompressionQuality();
 
-        $this->image->setImageFormat('JPEG');
-        $this->image->setImageCompression(\Imagick::COMPRESSION_JPEG);
-        $this->image->setImageCompressionQuality($a);
-        $this->image->stripImage();
+        //原图无压缩，或者压缩较轻
+        //原图压缩比当前大则不再处理，避免过分失真
+        if ($a == 0 || $a > $q) {
+
+            $a = $q;
+
+            $this->type = 'jpg';
+
+            $this->image->setImageFormat('JPEG');
+            $this->image->setImageCompression(\Imagick::COMPRESSION_JPEG);
+            $this->image->setImageCompressionQuality($a);
+
+            $this->image->setInterlaceScheme(\Imagick::INTERLACE_PLANE);
+        }
+
     }
 
     /**
