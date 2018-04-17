@@ -16,7 +16,7 @@ namespace App\Libraries;
  * @author weiguang3
  * @since 20140403
  */
-class ImageMagic
+class CowImageMagic
 {
     /**
      * @var $image \Imagick
@@ -412,25 +412,33 @@ class ImageMagic
         $canvas = new \Imagick ();
 
         if ($this->type == 'gif') {
-            $images = $image->coalesceImages();
-            foreach ($images as $frame) {
-                $img = new \Imagick ();
-                $img->readImageBlob($frame);
-                $img->cropImage($crop_w, $crop_h, $crop_x, $crop_y);
-                $img->thumbnailImage($width, $height,true);
+            $img_count = $image->getNumberImages();
+            //太耗费资源
+            if ($img_count <= 15) {
+                $images = $image->coalesceImages();
+                foreach ($images as $frame) {
+                    $img = new \Imagick ();
+                    $img->readImageBlob($frame);
+                    $img->cropImage($crop_w, $crop_h, $crop_x, $crop_y);
+                    $img->thumbnailImage($width, $height,true);
 
-                $canvas->addImage($img);
-                $canvas->setImageDelay($img->getImageDelay());
-                $canvas->setImagePage($width, $height, 0, 0);
+                    $canvas->addImage($img);
+                    $canvas->setImageDelay($img->getImageDelay());
+                    $canvas->setImagePage($width, $height, 0, 0);
+                }
+
+                $image->destroy();
+                $this->image = $canvas;
             }
         } else {
             $image->cropImage($crop_w, $crop_h, $crop_x, $crop_y);
             $image->thumbnailImage($width, $height,true);
             $canvas->addImage($image);
             $canvas->setImagePage($width, $height, 0, 0);
+            $image->destroy();
+
+            $this->image = $canvas;
         }
-        $image->destroy();
-        $this->image = $canvas;
     }
 
     /**
@@ -457,16 +465,21 @@ class ImageMagic
             $image = $this->image;
             $images = $image->coalesceImages();
             $canvas = new \Imagick ();
-            foreach ($images as $frame) {
-                $img = new \Imagick ();
-                $img->readImageBlob($frame);
-                $img->thumbnailImage($width, $height,true);
 
-                $canvas->addImage($img);
-                $canvas->setImageDelay($img->getImageDelay());
+            $img_count = $image->getNumberImages();
+            //太耗费资源
+            if ($img_count <= 15) {
+                foreach ($images as $frame) {
+                    $img = new \Imagick ();
+                    $img->readImageBlob($frame);
+                    $img->thumbnailImage($width, $height, true);
+
+                    $canvas->addImage($img);
+                    $canvas->setImageDelay($img->getImageDelay());
+                }
+                $image->destroy();
+                $this->image = $canvas;
             }
-            $image->destroy();
-            $this->image = $canvas;
         } else {
             $this->image->thumbnailImage($width, $height,true);
         }
@@ -485,19 +498,36 @@ class ImageMagic
         $this->image->stripImage();
 
         if ($this->type == 'gif') {
-            return ;
+            return;
         }
 
-        if ($this->type == 'png') {
-            $flag = $this->image->getImageAlphaChannel();
+//        //png 开头。这样可以保持透明
+//        if (strpos($this->type, 'png') === 0) {
+//
+//            $this->image->setImageCompression(\Imagick::COMPRESSION_UNDEFINED);
+//
+//            $colors = min(1600, $this->image->getImageColors());
+//            $this->image->quantizeImage($colors, \Imagick::COLORSPACE_RGB, 0, false, false );
+//            $this->image->setImageDepth(8 /* bits */);
+//
+//            return;
+//        }
 
-            if (!in_array($flag, [
-                \Imagick::ALPHACHANNEL_UNDEFINED,
-                \Imagick::ALPHACHANNEL_DEACTIVATE
-            ])) {
-                $this->image->setInterlaceScheme(\Imagick::INTERLACE_PLANE);
-                return ;
-            }
+
+        //所有其它格式全部 转 jpg， png 的透明部分会变黑
+
+        if (strpos($this->type, 'png') === 0) {
+
+            $size = $this->image->getImagePage();
+            $width = $size ['width'];
+            $height = $size ['height'];
+
+            $white=new \Imagick();
+            $white->newImage($width, $height, "#2c2c41");
+            $white->compositeImage($this->image, \Imagick::COMPOSITE_OVER, 0, 0);
+            $white->setImageFormat('jpg');
+
+            $this->image = $white;
         }
 
         $a = $this->image->getImageCompressionQuality();
@@ -525,6 +555,24 @@ class ImageMagic
     public function getBlob()
     {
         return $this->image->getImagesBlob();
+    }
+
+    /**
+     *
+     */
+    public function getFirstBlob() {
+        $image = $this->image;
+        $images = $image->coalesceImages();
+        foreach ($images as $frame) {
+            $img = new \Imagick ();
+            $img->readImageBlob($frame);
+            $img->setImageFormat('JPEG');
+            $img->setImageCompression(\Imagick::COMPRESSION_JPEG);
+
+            $img->setInterlaceScheme(\Imagick::INTERLACE_PLANE);
+
+            return $img->getImagesBlob();
+        }
     }
 
     /**
