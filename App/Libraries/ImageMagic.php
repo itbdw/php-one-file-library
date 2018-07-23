@@ -16,7 +16,7 @@ namespace App\Libraries;
  * @author weiguang3
  * @since 20140403
  */
-class CowImageMagic
+class ImageMagic
 {
     /**
      * @var $image \Imagick
