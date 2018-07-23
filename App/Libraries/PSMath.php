@@ -94,8 +94,6 @@ class PSMath
     }
 
     /**
-     * 四舍五入
-     *
      * @param $money_yuan
      * @param null $scale
      * @return null|string
@@ -104,8 +102,24 @@ class PSMath
         if ($scale === null) {
             $scale = self::$scale;
         }
+
+        //或者这个
         $money_yuan = round($money_yuan, $scale);
         return self::calculate($money_yuan, "-", 0, $scale);
+    }
+
+    /**
+     * 四舍五入
+     *
+     * @param $money_yuan
+     * @param null $scale
+     * @return null|string
+     */
+    public static function round2($money_yuan, $scale=null) {
+        if ($scale === null) {
+            $scale = self::$scale;
+        }
+        return number_format($money_yuan, $scale, '.', '');
     }
 
     /**
@@ -120,5 +134,17 @@ class PSMath
             $scale = self::$scale;
         }
         return self::calculate($money_yuan, "-", 0, $scale);
+    }
+
+    /**
+     * @param $money_yuan
+     * @param null $scale
+     * @return string
+     */
+    public static function floor2($money_yuan, $scale = null) {
+        if ($scale === null) {
+            $scale = self::$scale;
+        }
+        return substr(sprintf("%.".(++$scale)."f", $money_yuan), 0, -1);
     }
 }
